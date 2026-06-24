@@ -1,118 +1,123 @@
-pub fn describe_ipv4_packet(packet: &[u8]) -> Option<(String, String, u8)> {
-    if packet.len() < 20 {
-        return None;
-    }
+// Handling UDP packet
+// Registering request: "REGISTER REQUEST\r\n[ID]\r\n"
+// Registering respond: "REGISTER RESPOND\r\n[CODE]\r\n[IP]\r\n"
+// Keepalive request: "KEEPALIVE\r\n[IP]\r\n"
+// Keepalive respond: "KEEPALIVE\r\n"
+// Forwarding request: "FORWARD\r\n"
+// Forwarding respond: "FORWARD\r\n"
+use std::net::Ipv4Addr;
+use std::io::{Read, Write};
+use std::fs;
 
-    let version = packet[0] >> 4;
-    let ihl = packet[0] & 0x0f;
-    let ip_header_len = ihl as usize * 4;
+pub const SERVER_ADDR: &str = "120.27.129.226";
+pub const COMM_PORT: &str = "4000";
+pub const ALIVE_PORT: &str = "4001";
+pub const MTU: usize = 2000;
+pub const STATE_PATH: &str = "state.txt";
 
-    if version != 4 || ip_header_len < 20 || packet.len() < ip_header_len {
-        return None;
-    }
-
-    let total_len = u16::from_be_bytes([packet[2], packet[3]]) as usize;
-    if packet.len() < total_len {
-        return None;
-    }
-
-    let protocol = packet[9];
-
-    let src = format!(
-        "{}.{}.{}.{}",
-        packet[12], packet[13], packet[14], packet[15]
-    );
-
-    let dst = format!(
-        "{}.{}.{}.{}",
-        packet[16], packet[17], packet[18], packet[19]
-    );
-
-    Some((src, dst, protocol))
+#[derive(PartialEq, Debug)]
+pub struct State {
+    id: u64,
+    ip: Ipv4Addr
 }
 
-pub fn handle_ipv4_packet(packet: &[u8]) -> Option<Vec<u8>> {
-    if packet.len() < 20 {
-        return None;
+impl State {
+    pub fn read_from_file(path: &str) -> State {
+        let mut file = fs::File::open(path).unwrap();
+        let mut id_bytes = [0u8; 8];
+        let mut ip_bytes = [0u8; 4];
+
+        file.read_exact(&mut id_bytes);
+        file.read_exact(&mut ip_bytes);
+
+        let id = u64::from_be_bytes(id_bytes);
+        let ip = Ipv4Addr::from(ip_bytes);
+
+        State { id, ip }
     }
 
-    let version = packet[0] >> 4;
-    let ihl = packet[0] & 0x0f;
-    let ip_header_len = ihl as usize * 4;
+    pub fn write_to_file(&self, path: &str) {
+        let mut file = fs::File::create(path).unwrap();
 
-    if version != 4 || ip_header_len < 20 || packet.len() < ip_header_len {
-        return None;
+        file.write_all(&self.id.to_be_bytes());
+        file.write_all(&self.ip.octets());
     }
-
-    let protocol = packet[9];
-
-    // ICMP = 1
-    if protocol != 1 {
-        println!("not ICMP, protocol={}", protocol);
-        return None;
-    }
-
-    let total_len = u16::from_be_bytes([packet[2], packet[3]]) as usize;
-
-    if packet.len() < total_len {
-        return None;
-    }
-
-    let icmp_offset = ip_header_len;
-
-    // ICMP echo request = 8
-    if packet[icmp_offset] != 8 {
-        println!("not echo request, icmp_type={}", packet[icmp_offset]);
-        return None;
-    }
-
-    let src_ip = [packet[12], packet[13], packet[14], packet[15]];
-    let dst_ip = [packet[16], packet[17], packet[18], packet[19]];
-
-    let mut reply = packet[..total_len].to_vec();
-
-    // Swap IPv4 addresses.
-    reply[12..16].copy_from_slice(&dst_ip);
-    reply[16..20].copy_from_slice(&src_ip);
-
-    // Set TTL.
-    reply[8] = 64;
-
-    // Recalculate IPv4 header checksum.
-    reply[10] = 0;
-    reply[11] = 0;
-    let ip_sum = checksum(&reply[..ip_header_len]);
-    reply[10..12].copy_from_slice(&ip_sum.to_be_bytes());
-
-    // Change ICMP echo request to echo reply.
-    reply[icmp_offset] = 0;
-
-    // Recalculate ICMP checksum.
-    reply[icmp_offset + 2] = 0;
-    reply[icmp_offset + 3] = 0;
-    let icmp_sum = checksum(&reply[icmp_offset..total_len]);
-    reply[icmp_offset + 2..icmp_offset + 4].copy_from_slice(&icmp_sum.to_be_bytes());
-
-    Some(reply)
 }
 
-fn checksum(data: &[u8]) -> u16 {
-    let mut sum: u32 = 0;
+#[derive(PartialEq, Debug)]
+pub enum RegisterStatus {
+    Success,
+    IdConflict,
+    IpMaxLimit,
+    UndefinedError
+}
 
-    let mut chunks = data.chunks_exact(2);
+#[derive(PartialEq, Debug)]
+pub enum Respond {
+    RegisterRequest,
+    RegisterRespond(RegisterStatus),
+    Keepalive,
+    Forward,
+}
 
-    for chunk in &mut chunks {
-        let word = u16::from_be_bytes([chunk[0], chunk[1]]) as u32;
-        sum += word;
+pub fn get_packet_type(packet: &[u8]) -> Option<Respond> {
+    let mut result = None;
+    if packet.starts_with(b"REGISTER REQUEST\r\n") { 
+        result = Some(Respond::RegisterRequest);
+    } else if packet.starts_with(b"REGISTER RESPOND\r\n") {
+        let text = std::str::from_utf8(packet).unwrap();
+        let mut lines = text.split("\r\n");
+        lines.next();
+        let code: u8 = lines.next().unwrap().parse::<u8>().unwrap();
+        match code {
+            0 => { result = Some(Respond::RegisterRespond(RegisterStatus::Success)); },
+            1 => { result = Some(Respond::RegisterRespond(RegisterStatus::IdConflict)); },
+            2 => { result = Some(Respond::RegisterRespond(RegisterStatus::IpMaxLimit)); },
+            _ => { result = Some(Respond::RegisterRespond(RegisterStatus::UndefinedError)); }
+        }
+    } else if packet.starts_with(b"KEEPALIVE\r\n") {
+        result = Some(Respond::Keepalive);
+    } else if packet.starts_with(b"FORWARD\r\n") {
+        result = Some(Respond::Forward);
+    } else {
+        result = None;
     }
+    result
+}
 
-    if let [last] = chunks.remainder() {
-        sum += u16::from_be_bytes([*last, 0]) as u32;
+// Only for Respond::RequestRespond(true)
+pub fn parse_register_packet(packet: &[u8]) -> Option<Ipv4Addr> {
+    if let Some(Respond::RegisterRespond(RegisterStatus::Success)) = get_packet_type(packet) {
+        let text = std::str::from_utf8(packet).unwrap();
+        let mut lines = text.split("\r\n");
+        lines.next().next();
+        let ip: Ipv4Addr = lines.next().unwrap().parse::<Ipv4Addr>().unwrap();
+        Some(ip)
+    } else {
+        None
     }
+}
 
-    while (sum >> 16) != 0 {
-        sum = (sum & 0xffff) + (sum >> 16);
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    pub fn test_get_packet_type() {
+        let packet = b"REGISTER RESPOND\r\n0\r\nsdfsd";
+        let result = get_packet_type(&packet[..]);
+        assert_eq!(result, Some(Respond::RegisterRespond(RegisterStatus::Success)));
     }
-
-    !(sum as u16)
+    #[test]
+    pub fn test_parse_register_packet() {
+        let packet = b"REGISTER RESPOND\r\n0\r\n172.30.0.2";
+        let result = parse_register_packet(&packet[..]);
+        assert_eq!(result, Some(Ipv4Addr::new(172, 30, 0, 2)));
+    }
+    #[test]
+    pub fn test_read_write_file() {
+        let state = State { id: 0x1253e8b9dc2386e2, ip: Ipv4Addr::new(172, 30, 0, 2)};
+        state.write_to_file("test.bin");
+        let new_state = State::read_from_file("test.bin");
+        assert_eq!(state, new_state);
+    }
 }

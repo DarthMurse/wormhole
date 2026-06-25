@@ -82,6 +82,7 @@ pub fn serve(socket: &UdpSocket, mappings: &mut Mappings) {
                     code = 2;
                 }
                 let ip = Ipv4Addr::from(u32::from(mappings.last_ip) + 1);
+                println!("Register ID = {id}, IP = {ip}");
                 mappings.update(id, ip, addr);
                 mappings.write_to_file(SERVER_STATE_PATH);
                 let output = format!(

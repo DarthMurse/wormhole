@@ -3,7 +3,7 @@ use std::net::{UdpSocket, Ipv4Addr, SocketAddr};
 use std::collections::{HashMap};
 use anyhow::Result;
 use serde::{Serialize, Deserialize};
-use std::fs::File;
+use std::{fs, fs::File};
 use std::io::{BufReader, BufWriter};
 
 pub const SERVER_STATE_PATH: &str = "server.json";
@@ -121,6 +121,10 @@ pub fn forward(socket: &UdpSocket, mappings: &mut Mappings) {
     }
 }
 
-pub fn initialize() -> Result<()> {
-    Ok(())
+pub fn load_mapping() -> Result<Mappings> {
+    if fs::exists(SERVER_STATE_PATH)? {
+        Mappings::read_from_file(SERVER_STATE_PATH)
+    } else {
+        Ok(Mappings::new())
+    }
 }

@@ -88,9 +88,6 @@ pub fn keepalive(socket: &UdpSocket, mappings: &mut Mappings) {
                 socket.send_to(output.as_bytes(), addr).unwrap();
             },
             Some(Respond::Keepalive) => {
-                let mut buf = [0u8; MTU];
-                let (n, addr) = socket.recv_from(&mut buf).unwrap();
-                let packet = &buf[..n];
                 let mut lines = std::str::from_utf8(packet).unwrap().split("\r\n");
                 lines.next();
                 let ip = lines.next().unwrap().parse::<Ipv4Addr>().unwrap();

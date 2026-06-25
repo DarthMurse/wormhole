@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::{io, io::{Read, Write}};
 use std::{fs, path::Path};
 use std::net::{UdpSocket, Ipv4Addr, IpAddr, SocketAddr};
 use std::time::{Duration};
@@ -23,14 +23,26 @@ pub fn keep_alive(state: &State) -> Result<(), Box<dyn std::error::Error>> {
     let mut buf = [0u8; MTU];
     let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), ALIVE_PORT))?;
     socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), ALIVE_PORT))?;
+    socket.set_read_timeout(Some(Duration::from_secs(5)))?;
     loop {
         let message = format!("KEEPALIVE\r\n{}\r\n", state.ip.to_string());
         socket.send(message.as_bytes())?;
         println!("Waiting for message");
-        let n = socket.recv(&mut buf)?;
-        let packet = &buf[..n];
-        let echo = std::str::from_utf8(packet)?;
-        println!("The echo message: {echo}");
+        match socket.recv(&mut buf) {
+            Ok(n) => {
+                let packet = &buf[..n];
+                let echo = std::str::from_utf8(packet)?;
+                println!("The echo message: {echo}");
+            },
+            Err(e) => {
+                if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut {
+                    println!("no reply in 5 seconds, resending...");
+                    continue;
+                } else {
+                    return Err(Box::new(e));
+                }
+            }
+        };
         sleep(Duration::from_secs(10));
     }
 }

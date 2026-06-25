@@ -1,7 +1,8 @@
 use std::io::{Read, Write};
 use std::{fs, path::Path};
 use std::net::{UdpSocket, Ipv4Addr, IpAddr, SocketAddr};
-use std::time::Duration;
+use std::time::{Duration};
+use std::thread::sleep;
 use common::*;
 use std::process::Command;
 use tun::AbstractDevice;
@@ -17,8 +18,21 @@ pub fn receive_from_host(socket: &UdpSocket, tun: &tun::Device) {
 
 }
 
-pub fn keep_alive(socket: &UdpSocket, tun: &tun::Device) {
-    
+// Keep alive socket does not need to be shared.
+pub fn keep_alive(state: &State) -> Result<(), Box<dyn std::error::Error>> {
+    let mut buf = [0u8; MTU];
+    let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), ALIVE_PORT))?;
+    socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), ALIVE_PORT))?;
+    loop {
+        let message = format!("KEEPALIVE\r\n{}\r\n", state.ip.to_string());
+        socket.send(message.as_bytes())?;
+        println!("Waiting for message");
+        let n = socket.recv(&mut buf)?;
+        let packet = &buf[..n];
+        let echo = std::str::from_utf8(packet)?;
+        println!("The echo message: {echo}");
+        sleep(Duration::from_secs(10));
+    }
 }
 
 pub fn load_or_register() -> Result<State, Box<dyn std::error::Error>> {

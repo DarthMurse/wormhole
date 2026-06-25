@@ -8,6 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let alive_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), COMM_PORT));
     let state: State = load_or_register()?;
     println!("State registered! ID = {}, IP = {}.", state.id, state.ip);
+    keep_alive(&state)?;
     let config = Configuration::default();
     Ok(())
 }

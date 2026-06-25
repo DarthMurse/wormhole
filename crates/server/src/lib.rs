@@ -99,9 +99,9 @@ pub fn keepalive(socket: &UdpSocket, mappings: &mut Mappings) {
                         *old_public = addr;
                         mappings.write_to_file(SERVER_STATE_PATH);
                     }
-                    let output: &str = "KEEPALIVE\r\n";
-                    socket.send_to(output.as_bytes(), addr).unwrap();
                 }
+                let output: &str = "KEEPALIVE\r\n";
+                socket.send_to(output.as_bytes(), addr).unwrap();
             },
             _ => {
                 continue;

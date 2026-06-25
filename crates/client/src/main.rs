@@ -1,13 +1,12 @@
-use common::*;
+use anyhow::{Context, Result};
 use client::*;
-use std::net::{UdpSocket, IpAddr, Ipv4Addr, SocketAddr};
-use std::time::{Duration};
-use std::io::{Read, Write};
-use std::thread;
+use common::*;
+use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::process::Command;
-use tun::{Configuration, Device, AbstractDevice};
+use std::thread;
+use tun::{AbstractDevice, Configuration};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
     //let comm_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), COMM_PORT));
     let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), LOCAL_PORT))?;
     socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), SERVER_PORT))?;
@@ -24,33 +23,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let dev = tun::create(&config)?;
     #[cfg(target_os = "macos")]
-    Command::new("sudo")
-        .args([
-            "route",
-            "-n",
-            "add",
-            "-net",
-            "172.30.0.0/24",
-            "-interface",
-            dev.tun_name().unwrap().as_str(),
-        ]);
-    
+    {
+        let tun_name = dev.tun_name().context("failed to get TUN device name")?;
+        Command::new("sudo")
+            .args([
+                "route",
+                "-n",
+                "add",
+                "-net",
+                "172.30.168.0/24",
+                "-interface",
+                tun_name.as_str(),
+            ])
+            .status()?;
+    }
+
     let send_socket = socket.try_clone()?;
     let alive_socket = socket.try_clone()?;
     let recv_socket = socket;
-    let (mut send_tun, mut recv_tun) = dev.split();
+    let (send_tun, recv_tun) = dev.split();
 
-    let t_send = thread::spawn(move || -> () {
-        send_to_host(send_socket, send_tun);
-    });
-    let t_recv = thread::spawn(move || -> () {
-        receive_from_host(recv_socket, recv_tun);
-    });
-    let t_alive = thread::spawn(move || -> () {
-        keep_alive(alive_socket, state);
-    });
-    t_send.join();
-    t_recv.join();
-    t_alive.join();
+    let t_send = thread::spawn(move || send_to_host(send_socket, send_tun));
+    let t_recv = thread::spawn(move || receive_from_host(recv_socket, recv_tun));
+    let t_alive = thread::spawn(move || keep_alive(alive_socket, state));
+
+    t_send.join().expect("send thread panicked")?;
+    t_recv.join().expect("receive thread panicked")?;
+    t_alive.join().expect("keepalive thread panicked")?;
+
     Ok(())
 }

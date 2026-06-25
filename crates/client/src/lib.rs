@@ -5,40 +5,40 @@ use std::time::{Duration};
 use std::thread::sleep;
 use common::*;
 use std::process::Command;
-use tun::AbstractDevice;
+use tun::{AbstractDevice, Device};
 use rand::Rng;
 
 // Forward actual packet in udp packet and send to host
-pub fn send_to_host(socket: &UdpSocket, tun: &tun::Device) {
-
+pub fn send_to_host(socket: &UdpSocket, dev: &mut Device) -> Result<(), Box<dyn std::error::Error>> {
+    let mut buf = [0u8; MTU];
+    loop {
+        let n = dev.read(&mut buf)?;
+        let packet = &buf[..n];
+        let message = [b"FORWARD\r\n", packet].concat();
+        println!("Send forward packet to host");
+        socket.send(&message[..])?;
+    }
 }
 
 // Receive the packet from the host
-pub fn receive_from_host(socket: &UdpSocket, tun: &tun::Device) {
-
+pub fn receive_from_host(socket: &UdpSocket, dev: &mut Device) -> Result<(), Box<dyn std::error::Error>> {
+    let mut buf = [0u8; MTU];
+    loop {
+        let n = socket.recv(&mut buf)?;
+        let packet = &buf[..n];
+        if let Some(Respond::Forward) = get_packet_type(packet) {
+            let len = b"FORWARD\r\n".len();
+            let orig_packet = &buf[len..n];
+            dev.write_all(orig_packet);
+            println!("Receive forward packet from host");
+        }
+    }
 }
 
 pub fn keep_alive(socket: &UdpSocket, state: &State) -> Result<(), Box<dyn std::error::Error>> {
-    let mut buf = [0u8; MTU];
     loop {
         let message = format!("KEEPALIVE\r\n{}\r\n", state.ip.to_string());
         socket.send(message.as_bytes())?;
-        println!("Waiting for message");
-        match socket.recv(&mut buf) {
-            Ok(n) => {
-                let packet = &buf[..n];
-                let echo = std::str::from_utf8(packet)?;
-                println!("The echo message: {echo}");
-            },
-            Err(e) => {
-                if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut {
-                    println!("no reply in 5 seconds, resending...");
-                    continue;
-                } else {
-                    return Err(Box::new(e));
-                }
-            }
-        };
         sleep(Duration::from_secs(10));
     }
 }

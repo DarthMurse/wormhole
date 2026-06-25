@@ -2,7 +2,6 @@
 // Registering request: "REGISTER REQUEST\r\n[ID]\r\n"
 // Registering respond: "REGISTER RESPOND\r\n[CODE]\r\n[IP]\r\n"
 // Keepalive request: "KEEPALIVE\r\n[IP]\r\n"
-// Keepalive respond: "KEEPALIVE\r\n"
 // Forwarding request: "FORWARD\r\n"
 // Forwarding respond: "FORWARD\r\n"
 use std::net::Ipv4Addr;

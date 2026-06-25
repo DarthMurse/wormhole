@@ -1,8 +1,8 @@
 use common::*;
 use std::net::{UdpSocket, Ipv4Addr, SocketAddr};
 use std::collections::{HashMap};
-use anyhow::Result;
 use serde::{Serialize, Deserialize};
+use anyhow::{Result};
 use std::{fs, fs::File};
 use std::io::{BufReader, BufWriter};
 
@@ -50,17 +50,21 @@ impl Mappings {
     }
 }
 
-fn check_ip(packet: &[u8]) -> Ipv4Addr {
-    Ipv4Addr::new(
-        packet[16],
-        packet[17],
-        packet[18],
-        packet[19],
-    )
+fn check_ip(packet: &[u8]) -> Result<Ipv4Addr> {
+    let text = std::str::from_utf8(packet)?;
+    let mut lines = text.split("\r\n");
+    lines.next();
+    let inner = lines.next().unwrap().as_bytes();
+    Ok(Ipv4Addr::new(
+        inner[16],
+        inner[17],
+        inner[18],
+        inner[19],
+    ))
 }
 
-// Process keepalive and register together
-pub fn keepalive(socket: &UdpSocket, mappings: &mut Mappings) {
+// Process all services together
+pub fn serve(socket: &UdpSocket, mappings: &mut Mappings) {
     let mut buf = [0u8; MTU];
     loop {
         let (n, addr) = socket.recv_from(&mut buf).unwrap();
@@ -91,30 +95,24 @@ pub fn keepalive(socket: &UdpSocket, mappings: &mut Mappings) {
                 let mut lines = std::str::from_utf8(packet).unwrap().split("\r\n");
                 lines.next();
                 let ip = lines.next().unwrap().parse::<Ipv4Addr>().unwrap();
+                println!("Keepalive message from {ip}");
                 if let Some(old_public) = mappings.ip_to_public.get_mut(&ip) {
                     if *old_public != addr {
                         *old_public = addr;
                         mappings.write_to_file(SERVER_STATE_PATH);
                     }
                 }
-                let output: &str = "KEEPALIVE\r\n";
-                socket.send_to(output.as_bytes(), addr).unwrap();
+            },
+            Some(Respond::Forward) => {
+                let dest_ip = check_ip(packet).unwrap();
+                let out_addr = mappings.ip_to_public.get(&dest_ip).unwrap();
+                println!("Forward packet to {dest_ip}");
+                socket.send_to(packet, *out_addr);
             },
             _ => {
                 continue;
             }
         }
-    }
-}
-
-pub fn forward(socket: &UdpSocket, mappings: &mut Mappings) {
-    let mut buf = [0u8; MTU];
-    loop {
-        let (n, addr) = socket.recv_from(&mut buf).unwrap();
-        let packet = &buf[..n];
-        let dest_ip = check_ip(packet);
-        let out_addr = mappings.ip_to_public.get(&dest_ip).unwrap();
-        socket.send_to(packet, *out_addr);
     }
 }
 

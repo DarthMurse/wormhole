@@ -9,8 +9,8 @@ use tun::{Configuration, Device, AbstractDevice};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let comm_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), COMM_PORT));
-    let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), PORT))?;
-    socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), PORT))?;
+    let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), LOCAL_PORT))?;
+    socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), SERVER_PORT))?;
     //socket.set_read_timeout(Duration::from_secs(5))?;
     let state: State = load_or_register()?;
     println!("State registered! ID = {}, IP = {}.", state.id, state.ip);

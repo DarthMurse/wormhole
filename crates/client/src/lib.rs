@@ -50,8 +50,8 @@ pub fn load_or_register() -> Result<State, Box<dyn std::error::Error>> {
         return Ok(State::read_from_file(STATE_PATH));
     } else {
         println!("Registering new states from the server ...");
-        let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), PORT))?;
-        socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), PORT))?;
+        let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), LOCAL_PORT))?;
+        socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), SERVER_PORT))?;
         let mut rng = rand::rng();
         let id: u64 = rng.random();
         let request = String::from("REGISTER REQUEST\r\n");

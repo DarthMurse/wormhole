@@ -18,12 +18,8 @@ pub fn receive_from_host(socket: &UdpSocket, tun: &tun::Device) {
 
 }
 
-// Keep alive socket does not need to be shared.
-pub fn keep_alive(state: &State) -> Result<(), Box<dyn std::error::Error>> {
+pub fn keep_alive(socket: &UdpSocket, state: &State) -> Result<(), Box<dyn std::error::Error>> {
     let mut buf = [0u8; MTU];
-    let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), ALIVE_PORT))?;
-    socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), ALIVE_PORT))?;
-    socket.set_read_timeout(Some(Duration::from_secs(5)))?;
     loop {
         let message = format!("KEEPALIVE\r\n{}\r\n", state.ip.to_string());
         socket.send(message.as_bytes())?;
@@ -54,8 +50,8 @@ pub fn load_or_register() -> Result<State, Box<dyn std::error::Error>> {
         return Ok(State::read_from_file(STATE_PATH));
     } else {
         println!("Registering new states from the server ...");
-        let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), ALIVE_PORT))?;
-        socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), ALIVE_PORT))?;
+        let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), PORT))?;
+        socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), PORT))?;
         let mut rng = rand::rng();
         let id: u64 = rng.random();
         let request = String::from("REGISTER REQUEST\r\n");

@@ -5,10 +5,11 @@ use tun::{Configuration, Device, AbstractDevice};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let comm_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), COMM_PORT));
-    //let alive_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), COMM_PORT));
+    let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), PORT))?;
+    socket.connect(SocketAddr::new(IpAddr::V4(SERVER_ADDR), PORT))?;
     let state: State = load_or_register()?;
     println!("State registered! ID = {}, IP = {}.", state.id, state.ip);
-    keep_alive(&state)?;
+    keep_alive(&socket, &state)?;
     let config = Configuration::default();
     Ok(())
 }

@@ -11,8 +11,7 @@ use std::fs;
 
 pub const SERVER_ADDR: Ipv4Addr = Ipv4Addr::new(120, 27, 129, 226);
 pub const LOCAL_ADDR: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
-pub const COMM_PORT: u16 = 4000;
-pub const ALIVE_PORT: u16 = 4001;
+pub const PORT: u16 = 4000;
 pub const MTU: usize = 2000;
 pub const STATE_PATH: &str = "state.bin";
 

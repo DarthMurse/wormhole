@@ -4,9 +4,8 @@ use server::*;
 use anyhow::{Result};
 
 fn main() -> Result<()> {
-    let alive_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), ALIVE_PORT))?;
-    let comm_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), COMM_PORT))?;
+    let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), PORT))?;
     let mut mappings = load_mapping().unwrap();
-    keepalive(&alive_socket, &mut mappings);
+    keepalive(&socket, &mut mappings);
     Ok(())
 }

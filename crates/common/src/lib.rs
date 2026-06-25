@@ -90,6 +90,7 @@ pub fn get_packet_type(packet: &[u8]) -> Option<Respond> {
 pub fn parse_register_packet(packet: &[u8]) -> Option<Ipv4Addr> {
     if let Some(Respond::RegisterRespond(RegisterStatus::Success)) = get_packet_type(packet) {
         let text = std::str::from_utf8(packet).unwrap();
+        println!("{text}");
         let mut lines = text.split("\r\n");
         lines.next();
         lines.next();

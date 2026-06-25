@@ -82,7 +82,7 @@ pub fn keepalive(socket: &UdpSocket, mappings: &mut Mappings) {
                 let output = format!(
                     "REGISTER RESPOND\r\n{}\r\n{}\r\n",
                     code,
-                    lines.collect::<Vec<&str>>().join("\r\n")
+                    ip.to_string()
                 );
                 socket.send_to(output.as_bytes(), addr).unwrap();
             },

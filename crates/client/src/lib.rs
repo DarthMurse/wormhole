@@ -5,11 +5,11 @@ use std::time::{Duration};
 use std::thread::sleep;
 use common::*;
 use std::process::Command;
-use tun::{AbstractDevice, Device};
+use tun::{Reader, Writer, Device};
 use rand::Rng;
 
 // Forward actual packet in udp packet and send to host
-pub fn send_to_host(socket: &UdpSocket, dev: &mut Device) -> Result<(), Box<dyn std::error::Error>> {
+pub fn send_to_host(socket: UdpSocket, mut dev: Reader) -> Result<(), Box<dyn std::error::Error>> {
     let mut buf = [0u8; MTU];
     loop {
         let n = dev.read(&mut buf)?;
@@ -21,7 +21,7 @@ pub fn send_to_host(socket: &UdpSocket, dev: &mut Device) -> Result<(), Box<dyn 
 }
 
 // Receive the packet from the host
-pub fn receive_from_host(socket: &UdpSocket, dev: &mut Device) -> Result<(), Box<dyn std::error::Error>> {
+pub fn receive_from_host(socket: UdpSocket, mut dev: Writer) -> Result<(), Box<dyn std::error::Error>> {
     let mut buf = [0u8; MTU];
     loop {
         let n = socket.recv(&mut buf)?;
@@ -35,7 +35,7 @@ pub fn receive_from_host(socket: &UdpSocket, dev: &mut Device) -> Result<(), Box
     }
 }
 
-pub fn keep_alive(socket: &UdpSocket, state: &State) -> Result<(), Box<dyn std::error::Error>> {
+pub fn keep_alive(socket: UdpSocket, state: State) -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let message = format!("KEEPALIVE\r\n{}\r\n", state.ip.to_string());
         socket.send(message.as_bytes())?;

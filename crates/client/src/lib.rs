@@ -16,6 +16,7 @@ pub fn send_to_host(socket: UdpSocket, mut dev: Reader) -> Result<(), Box<dyn st
         let packet = &buf[..n];
         let message = [b"FORWARD\r\n", packet].concat();
         println!("Send forward packet to host");
+        dbg!(&message[..]);
         socket.send(&message[..])?;
     }
 }

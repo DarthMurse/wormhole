@@ -104,10 +104,16 @@ pub fn serve(socket: &UdpSocket, mappings: &mut Mappings) {
             },
             Some(Respond::Forward) => {
                 let dest_ip = check_ip(packet).unwrap();
-                println!("Forwarding destination: {dest_ip}");
-                let out_addr = mappings.ip_to_public.get(&dest_ip).unwrap();
-                println!("Forward packet to {dest_ip}");
-                socket.send_to(packet, *out_addr);
+
+                match mappings.ip_to_public.get(&dest_ip) {
+                    Some(out_addr) => {
+                        println!("Forward packet to {dest_ip}");
+                        socket.send_to(packet, *out_addr);
+                    },
+                    None => {
+                        continue;
+                    }
+                }
             },
             _ => {
                 continue;

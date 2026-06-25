@@ -9,16 +9,17 @@ use std::net::Ipv4Addr;
 use std::io::{Read, Write};
 use std::fs;
 
-pub const SERVER_ADDR: &str = "120.27.129.226";
-pub const COMM_PORT: &str = "4000";
-pub const ALIVE_PORT: &str = "4001";
+pub const SERVER_ADDR: Ipv4Addr = Ipv4Addr::new(120, 27, 129, 226);
+pub const LOCAL_ADDR: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
+pub const COMM_PORT: u16 = 4000;
+pub const ALIVE_PORT: u16 = 4001;
 pub const MTU: usize = 2000;
 pub const STATE_PATH: &str = "state.txt";
 
 #[derive(PartialEq, Debug)]
 pub struct State {
-    id: u64,
-    ip: Ipv4Addr
+    pub id: u64,
+    pub ip: Ipv4Addr
 }
 
 impl State {
@@ -90,7 +91,8 @@ pub fn parse_register_packet(packet: &[u8]) -> Option<Ipv4Addr> {
     if let Some(Respond::RegisterRespond(RegisterStatus::Success)) = get_packet_type(packet) {
         let text = std::str::from_utf8(packet).unwrap();
         let mut lines = text.split("\r\n");
-        lines.next().next();
+        lines.next();
+        lines.next();
         let ip: Ipv4Addr = lines.next().unwrap().parse::<Ipv4Addr>().unwrap();
         Some(ip)
     } else {

@@ -25,7 +25,7 @@ pub fn load_or_register() -> Result<State, Box<dyn std::error::Error>> {
     println!("Getting client states ...");
     if fs::exists(STATE_PATH)? {
         println!("Reading from existing states ...");
-        Ok(State::read_from_file(STATE_PATH))
+        return Ok(State::read_from_file(STATE_PATH));
     } else {
         println!("Registering new states from the server ...");
         let socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), ALIVE_PORT))?;
@@ -44,7 +44,7 @@ pub fn load_or_register() -> Result<State, Box<dyn std::error::Error>> {
                     let ip: Ipv4Addr = parse_register_packet(&packet).unwrap();
                     let state: State = State { id, ip };
                     state.write_to_file(STATE_PATH);
-                    Ok::<common::State, Box<dyn std::error::Error>>(state)
+                    return Ok::<common::State, Box<dyn std::error::Error>>(state);
                 },
                 Some(Respond::RegisterRespond(RegisterStatus::IpMaxLimit)) => {
                     panic!("Server IP addresses are full!");

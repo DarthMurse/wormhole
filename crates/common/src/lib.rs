@@ -14,7 +14,7 @@ pub const LOCAL_ADDR: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 pub const COMM_PORT: u16 = 4000;
 pub const ALIVE_PORT: u16 = 4001;
 pub const MTU: usize = 2000;
-pub const STATE_PATH: &str = "state.txt";
+pub const STATE_PATH: &str = "state.bin";
 
 #[derive(PartialEq, Debug)]
 pub struct State {

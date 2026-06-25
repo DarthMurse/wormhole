@@ -6,7 +6,7 @@ use anyhow::{Result};
 fn main() -> Result<()> {
     let alive_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), ALIVE_PORT))?;
     let comm_socket = UdpSocket::bind(SocketAddr::new(IpAddr::V4(LOCAL_ADDR), COMM_PORT))?;
-    let mut mappings = Mappings::new();
+    let mut mappings = Mappings::read_from_file(SERVER_STATE_PATH).unwrap();
     keepalive(&alive_socket, &mut mappings);
     Ok(())
 }

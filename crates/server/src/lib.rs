@@ -6,7 +6,7 @@ use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 
-const SERVER_STATE_PATH: &str = "server.json";
+pub const SERVER_STATE_PATH: &str = "server.json";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Mappings {
@@ -79,6 +79,7 @@ pub fn keepalive(socket: &UdpSocket, mappings: &mut Mappings) {
                 }
                 let ip = Ipv4Addr::from(u32::from(mappings.last_ip) + 1);
                 mappings.update(id, ip, addr);
+                mappings.write_to_file(SERVER_STATE_PATH);
                 let output = format!(
                     "REGISTER RESPOND\r\n{}\r\n{}\r\n",
                     code,

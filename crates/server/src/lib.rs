@@ -38,14 +38,14 @@ impl Mappings {
         let writer = BufWriter::new(file);
 
         serde_json::to_writer_pretty(writer, self)?;
-
+        println!("Save mapping to server.json.");
         Ok(())
     }
 
     pub fn read_from_file(path: &str) -> Result<Self> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
-
+        println!("Read mapping from server.json");
         Ok(serde_json::from_reader(reader)?)
     }
 }

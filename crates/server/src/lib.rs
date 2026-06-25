@@ -25,7 +25,7 @@ impl Mappings {
     pub fn new() -> Self {
         let mut id_to_ip: HashMap<u64, Ipv4Addr> = HashMap::new();
         let mut ip_to_public: HashMap<Ipv4Addr, SocketAddr> = HashMap::new();
-        let mut last_ip: Ipv4Addr = Ipv4Addr::new(172, 30, 0, 0);
+        let mut last_ip: Ipv4Addr = Ipv4Addr::new(172, 30, 168, 0);
         Mappings {
             id_to_ip,
             ip_to_public,

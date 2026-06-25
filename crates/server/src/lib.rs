@@ -51,10 +51,8 @@ impl Mappings {
 }
 
 fn check_ip(packet: &[u8]) -> Result<Ipv4Addr> {
-    let text = std::str::from_utf8(packet)?;
-    let mut lines = text.split("\r\n");
-    lines.next();
-    let inner = lines.next().unwrap().as_bytes();
+    let len = b"FORWARD\r\n".len();
+    let inner = &packet[len..];
     Ok(Ipv4Addr::new(
         inner[16],
         inner[17],
